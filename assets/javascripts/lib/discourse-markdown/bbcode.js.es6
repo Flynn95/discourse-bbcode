@@ -23,6 +23,13 @@ function replaceFontFace (text) {
   return text;
 }
 
+function replaceSpoilerButton (text) {
+  while (text !== (text = text.replace(\[spoilerbutton=([^\]]+)\]((?:(?!\[spoilerbutton=[^\]]+\]|\[\/spoilerbutton\])[\S\s])*)\[\/spoilerbutton\]/ig, function (match, p1, p2) {
+    return `<div class="spoilerbutton"><input type="button" value="${p1 ? p1 : 'Spoiler'}" style="font-size:12px;" onclick="var spoiler = $(this).parents('.spoilerbutton').find('.spoilerbutton-content').toggle();return false;"><div class="spoilerbutton-content">${p2}</div></div>`;
+  })));
+  return text;
+}
+
 function wrap(tag, attr, callback) {
   return function(startToken, finishToken, tagInfo) {
     startToken.tag = finishToken.tag = tag;
@@ -83,10 +90,24 @@ function setupMarkdownIt(md) {
   });
 
   ['left','right','center'].forEach(dir=>{
-    md.block.bbcode.ruler.push(dir, {
-      tag: dir,
+    let align;
+    switch(dir) {
+      case "left":
+        align = "flex-start";
+        break;
+      case "center":
+        align = "center";
+        break;
+      case "right":
+        align = "flex-end";
+        break;
+      default:
+        align = '';
+    }
+    md.block.bbcode.ruler.push(align, {
+      tag: align,
       wrap: function(token) {
-        token.attrs = [['style', 'text-align:' + dir]];
+        token.attrs = [['style', 'display:flex;justify-content:' + align]];
         return true;
       }
     });
@@ -232,7 +253,21 @@ export function setup(helper) {
   replaceBBCode("highlight", contents => ['div', {'class': 'highlight'}].concat(contents));
 
   ["left", "center", "right"].forEach(direction => {
-    replaceBBCode(direction, contents => ['div', {'style': "text-align:" + direction}].concat(contents));
+    let align;
+    switch(direction) {
+      case "left":
+        align = "flex-start";
+        break;
+      case "center":
+        align = "center";
+        break;
+      case "right":
+        align = "flex-end";
+        break;
+      default:
+        align = '';
+    }
+    replaceBBCode(align, contents => ['div', {'style': "display:flex;justify-content:" + align}].concat(contents));
   });
 
   replaceBBCode('edit', contents =>  ['div', {'class': 'sepquote'}, ['span', { 'class': 'smallfont' }, "Edit:"], ['br'], ['br']].concat(contents));
@@ -244,6 +279,7 @@ export function setup(helper) {
   helper.addPreProcessor(replaceFontColor);
   helper.addPreProcessor(replaceFontSize);
   helper.addPreProcessor(replaceFontFace);
+  helper.addPreProcessor(replaceSpoilerButton);
 
   register("aname", (contents, param) => ['a', {'name': param, 'data-bbcode': true}].concat(contents));
   register("jumpto", (contents, param) => ['a', {href: "#" + param, 'data-bbcode': true}].concat(contents));
